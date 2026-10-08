@@ -1,42 +1,35 @@
 <?php
-require_once '../src/Estadistica.php';
-require_once '../src/Vista.php';
-session_start();
+require_once '../clases/inicio.php';
 
+$flash = new Flash('tercer');
 $est = new Estadistica();
-$error = '';
-$resultado = [];
-$valoresPrevios = [];
-$cantidad = 0;
 
+// 1) Al enviar un formulario: procesar, guardar y redirigir
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paso = (string) ($_POST['paso'] ?? '');
 
     if ($paso === 'cantidad') {
-     
+        // Paso 1: el usuario indica cuántos números va a ingresar
         $texto = (string) ($_POST['cantidad'] ?? '');
 
         if ($est->esCantidadValida($texto)) {
-            header('Location: tercer_ejercisio.php?cantidad=' . $est->aEntero($texto));
-        } else {
-            $_SESSION['error'] = 'Ingrese una cantidad entera entre 1 y ' . Estadistica::MAX_CANTIDAD . '.';
-            header('Location: tercer_ejercisio.php');
+            $flash->redirigir('tercer_ejercicio.php?cantidad=' . Numero::aEntero($texto));
         }
-        exit;
+        $flash->guardar('error', 'Ingrese una cantidad entera entre 1 y ' . Estadistica::MAX_CANTIDAD . '.');
+        $flash->redirigir('tercer_ejercicio.php');
     }
 
     if ($paso === 'datos') {
-    
+        // Paso 2: llegan los números
         $texto = (string) ($_POST['cantidad'] ?? '');
         $enviados = $_POST['valores'] ?? [];
 
         if (!$est->esCantidadValida($texto) || !is_array($enviados)) {
-            $_SESSION['error'] = 'Datos inválidos. Intente de nuevo.';
-            header('Location: tercer_ejercisio.php');
-            exit;
+            $flash->guardar('error', 'Datos inválidos. Intente de nuevo.');
+            $flash->redirigir('tercer_ejercicio.php');
         }
 
-        $n = $est->aEntero($texto);
+        $n = Numero::aEntero($texto);
         $numeros = [];
         $textos = [];
         $todoValido = true;
@@ -44,61 +37,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         for ($i = 0; $i < $n; $i++) {
             $valor = isset($enviados[$i]) && is_string($enviados[$i]) ? $enviados[$i] : '';
             $textos[] = $valor;
-            if ($est->esRealValido($valor)) {
-                $numeros[] = $est->aReal($valor);
+            if (Numero::esReal($valor)) {
+                $numeros[] = Numero::aReal($valor);
             } else {
                 $todoValido = false;
             }
         }
 
         if (!$todoValido) {
-            $_SESSION['error'] = 'Todos los campos deben ser números reales (ej: 5, -3.2, 0,75).';
-            $_SESSION['valores'] = $textos;
-            header('Location: tercer_ejercisio.php?cantidad=' . $n);
-        } else {
-            $_SESSION['resultado'] = [
-                'numeros'  => $numeros,
-                'promedio' => $est->promedio($numeros),
-                'mediana'  => $est->mediana($numeros),
-                'moda'     => $est->moda($numeros),
-            ];
-            header('Location: tercer_ejercisio.php');
+            $flash->guardar('error', 'Todos los campos deben ser números reales (ej: 5, -3.2, 0,75).');
+            $flash->guardar('valores', $textos);
+            $flash->redirigir('tercer_ejercicio.php?cantidad=' . $n);
         }
-        exit;
+
+        $flash->guardar('resultado', [
+            'numeros'  => $numeros,
+            'promedio' => $est->promedio($numeros),
+            'mediana'  => $est->mediana($numeros),
+            'moda'     => $est->moda($numeros),
+        ]);
+        $flash->redirigir('tercer_ejercicio.php');
     }
 
-    header('Location: tercer_ejercisio.php');
-    exit;
+    $flash->redirigir('tercer_ejercicio.php');
 }
 
+// 2) Al mostrar la página: leer lo guardado (se borra solo)
+$datos = $flash->recoger();
+$error = $datos['error'] ?? '';
+$valoresPrevios = $datos['valores'] ?? [];
+$resultado = $datos['resultado'] ?? [];
 
+$cantidad = 0;
 if (isset($_GET['cantidad']) && is_string($_GET['cantidad']) && $est->esCantidadValida($_GET['cantidad'])) {
-    $cantidad = $est->aEntero($_GET['cantidad']);
+    $cantidad = Numero::aEntero($_GET['cantidad']);
 }
-if (isset($_SESSION['error'])) {
-    $error = $_SESSION['error'];
-}
-if (isset($_SESSION['valores'])) {
-    $valoresPrevios = $_SESSION['valores'];
-}
-if (isset($_SESSION['resultado'])) {
-    $resultado = $_SESSION['resultado'];
-}
-unset($_SESSION['error'], $_SESSION['valores'], $_SESSION['resultado']);
+
+$titulo = 'Tercer ejercicio';
+require '../partes/encabezado.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tercer ejercicio</title>
-    <link rel="stylesheet" href="../css/ejercicio3.css">
-</head>
-<body>
-    <h1>Tercer ejercicio</h1>
 
     <?php if ($cantidad === 0): ?>
-      
+        <!-- Paso 1: cuántos números -->
         <form method="post" action="">
             <input type="hidden" name="paso" value="cantidad">
             <div>
@@ -110,14 +90,14 @@ unset($_SESSION['error'], $_SESSION['valores'], $_SESSION['resultado']);
             </div>
         </form>
     <?php else: ?>
-     
+        <!-- Paso 2: los números -->
         <form method="post" action="" class="datos">
             <input type="hidden" name="paso" value="datos">
-            <input type="hidden" name="cantidad" value="<?= $cantidad ?>">
+            <input type="hidden" name="cantidad" value="<?= Vista::e($cantidad) ?>">
             <?php for ($i = 0; $i < $cantidad; $i++): ?>
                 <div>
-                    <label for="v<?= $i ?>">Número <?= $i + 1 ?></label>
-                    <input type="text" name="valores[]" id="v<?= $i ?>" inputmode="decimal"
+                    <label for="v<?= Vista::e($i) ?>">Número <?= Vista::e($i + 1) ?></label>
+                    <input type="text" name="valores[]" id="v<?= Vista::e($i) ?>" inputmode="decimal"
                            value="<?= Vista::e(isset($valoresPrevios[$i]) ? (string) $valoresPrevios[$i] : '') ?>">
                 </div>
             <?php endfor; ?>
@@ -136,23 +116,21 @@ unset($_SESSION['error'], $_SESSION['valores'], $_SESSION['resultado']);
             <p>Números ingresados:</p>
             <ul class="serie">
                 <?php foreach ($resultado['numeros'] as $n): ?>
-                    <li><?= $n ?></li>
+                    <li><?= Vista::e($n) ?></li>
                 <?php endforeach; ?>
             </ul>
-            <p>Promedio: <strong><?= $resultado['promedio'] ?></strong></p>
-            <p>Mediana: <strong><?= $resultado['mediana'] ?></strong></p>
+            <p>Promedio: <strong><?= Vista::e($resultado['promedio']) ?></strong></p>
+            <p>Mediana: <strong><?= Vista::e($resultado['mediana']) ?></strong></p>
             <p>Moda:
                 <strong>
                 <?php if (count($resultado['moda']) === 0): ?>
                     no hay moda (ningún número se repite)
                 <?php else: ?>
-                    <?= implode(', ', $resultado['moda']) ?>
+                    <?= Vista::e(implode(', ', $resultado['moda'])) ?>
                 <?php endif; ?>
                 </strong>
             </p>
         </div>
     <?php endif; ?>
 
-    <a href="../Index.html">volver</a>
-</body>
-</html>
+<?php require '../partes/pie.php'; ?>

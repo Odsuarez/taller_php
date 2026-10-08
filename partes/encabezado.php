@@ -1,0 +1,14 @@
+<?php
+// Variables que debe definir la página antes de incluir este archivo:
+//   $titulo      → título de la página y del <h1>
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= Vista::e($titulo) ?></title>
+    <link rel="stylesheet" href="../css/estilos.css">
+</head>
+<body>
+    <h1><?= Vista::e($titulo) ?></h1>

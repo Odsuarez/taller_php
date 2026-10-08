@@ -1,61 +1,20 @@
 <?php
 
+/**
+ * Operaciones entre conjuntos de números enteros usando solo ciclos y condiciones.
+ */
 class Conjuntos
 {
     const MAX_ELEMENTOS = 50;
+    const MAX_DIGITOS = 9;
 
- 
+    /** Indica si el carácter separa números (espacio, coma, punto y coma, tab). */
     private function esSeparador(string $c): bool
     {
         return $c === ' ' || $c === ',' || $c === ';' || $c === "\t";
     }
 
-   
-    private function esEnteroValido(string $texto): bool
-    {
-        $total = strlen($texto);
-        $inicio = 0;
-
-        if ($total > 0 && ($texto[0] === '-' || $texto[0] === '+')) {
-            $inicio = 1;
-        }
-
-        $cantidadDigitos = $total - $inicio;
-        if ($cantidadDigitos < 1 || $cantidadDigitos > 9) {
-            return false;
-        }
-
-        for ($i = $inicio; $i < $total; $i++) {
-            $codigo = ord($texto[$i]);
-            if ($codigo < 48 || $codigo > 57) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    
-    private function aEntero(string $texto): int
-    {
-        $total = strlen($texto);
-        $signo = 1;
-        $inicio = 0;
-
-        if ($texto[0] === '-') {
-            $signo = -1;
-            $inicio = 1;
-        } elseif ($texto[0] === '+') {
-            $inicio = 1;
-        }
-
-        $numero = 0;
-        for ($i = $inicio; $i < $total; $i++) {
-            $numero = $numero * 10 + (ord($texto[$i]) - 48);
-        }
-        return $signo * $numero;
-    }
-
-
+    /** Devuelve true si el número ya está en el conjunto. */
     public function contiene(array $conjunto, int $numero): bool
     {
         foreach ($conjunto as $elemento) {
@@ -66,23 +25,27 @@ class Conjuntos
         return false;
     }
 
-
+    /**
+     * Convierte un texto como "1, 2 3;4" en un conjunto (sin repetidos).
+     * Devuelve null si algún valor no es un entero válido, o si no hay ninguno,
+     * o si hay demasiados elementos.
+     */
     public function aConjunto(string $texto): ?array
     {
         $conjunto = [];
         $palabra = '';
         $total = strlen($texto);
 
-       
+        // Se agrega un separador imaginario al final para cerrar la última palabra
         for ($i = 0; $i <= $total; $i++) {
             $c = $i < $total ? $texto[$i] : ' ';
 
             if ($this->esSeparador($c)) {
                 if ($palabra !== '') {
-                    if (!$this->esEnteroValido($palabra)) {
+                    if (!Numero::esEntero($palabra, self::MAX_DIGITOS, true)) {
                         return null;
                     }
-                    $numero = $this->aEntero($palabra);
+                    $numero = Numero::aEntero($palabra);
                     if (!$this->contiene($conjunto, $numero)) {
                         $conjunto[] = $numero;
                     }
@@ -96,27 +59,10 @@ class Conjuntos
         if (count($conjunto) === 0 || count($conjunto) > self::MAX_ELEMENTOS) {
             return null;
         }
-        return $this->ordenar($conjunto);
+        return Ordenamiento::ascendente($conjunto);
     }
 
-   
-    public function ordenar(array $numeros): array
-    {
-        $total = count($numeros);
-
-        for ($i = 1; $i < $total; $i++) {
-            $actual = $numeros[$i];
-            $j = $i - 1;
-
-            while ($j >= 0 && $numeros[$j] > $actual) {
-                $numeros[$j + 1] = $numeros[$j];
-                $j--;
-            }
-            $numeros[$j + 1] = $actual;
-        }
-        return $numeros;
-    }
-
+    /** Unión: todos los elementos de A y de B, sin repetir. */
     public function union(array $a, array $b): array
     {
         $resultado = $a;
@@ -125,10 +71,10 @@ class Conjuntos
                 $resultado[] = $elemento;
             }
         }
-        return $this->ordenar($resultado);
+        return Ordenamiento::ascendente($resultado);
     }
 
-   
+    /** Intersección: los elementos que están en A y también en B. */
     public function interseccion(array $a, array $b): array
     {
         $resultado = [];
@@ -137,10 +83,10 @@ class Conjuntos
                 $resultado[] = $elemento;
             }
         }
-        return $this->ordenar($resultado);
+        return Ordenamiento::ascendente($resultado);
     }
 
-   
+    /** Diferencia A - B: los elementos de A que NO están en B. */
     public function diferencia(array $a, array $b): array
     {
         $resultado = [];
@@ -149,6 +95,6 @@ class Conjuntos
                 $resultado[] = $elemento;
             }
         }
-        return $this->ordenar($resultado);
+        return Ordenamiento::ascendente($resultado);
     }
 }
